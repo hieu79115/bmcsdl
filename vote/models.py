@@ -53,10 +53,10 @@ class User(AbstractUser):
         return self.id
 
     def check_password(self, raw_password):
-        """
-        Check if the provided raw_password matches the user's stored password.
-        """
         return super().check_password(raw_password)
+
+    def set_password(self, raw_password):
+        super().set_password(raw_password)
 
 
 class District(models.Model):
@@ -105,7 +105,7 @@ class Candidate(models.Model):
 
 class Vote(models.Model):
     user = models.CharField(max_length=40)
-    candidate = models.CharField(max_length=40)
+    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, to_field='id')
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

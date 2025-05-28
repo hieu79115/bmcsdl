@@ -40,6 +40,8 @@ def login(request):
     next_url = request.GET.get('next', reverse('vote:index'))
 
     if request.method == 'POST':
+        if request.user.is_authenticated:
+            return redirect('vote:index')
         login_form = LoginForm(request.POST)
         if login_form.is_valid():
             id = login_form.cleaned_data['id']
@@ -126,11 +128,11 @@ def vote(request, candidate_id):
 
     if request.method == 'POST':
         v = Vote.objects.create(
-            candidate=c.id,
+            candidate=c,
             user=request.user.id,
         )
         v.save()
-        messages.success(request, 'Vote successfully cast!')
+        # messages.success(request, 'Vote successfully cast!')
         return redirect('vote:index')
 
     return redirect('vote:index')
