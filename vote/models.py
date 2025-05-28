@@ -1,7 +1,13 @@
 from django.contrib.auth.base_user import BaseUserManager
-from django.db import models
+from django.db import models, connection
 from django.utils.safestring import mark_safe
 from django.contrib.auth.models import AbstractUser
+
+
+def validate_id(value: str):
+    if len(value) < 3:
+        raise ValueError("ID must be at least 3 characters long")
+    return True
 
 
 class UserManager(BaseUserManager):
@@ -36,7 +42,7 @@ class User(AbstractUser):
     username = None
     first_name = None
     last_name = None
-    id = models.CharField(max_length=40, unique=True, primary_key=True)
+    id = models.CharField(max_length=40, unique=True, primary_key=True, validators=[validate_id])
     name = models.CharField(max_length=100)
     birthdate = models.DateField(null=True, blank=True)
     address = models.CharField(max_length=255)
@@ -95,16 +101,17 @@ class Candidate(models.Model):
         return mark_safe('<img src="/media/%s" width="150" style="max-height: 200px;object-fit: cover;" />' % self.image)
 
     def get_vote_count(self):
-        votes = Vote.objects.filter(candidate=self.id).values_list('user', flat=True)
-        votes = votes.distinct()
-        print(votes)
-        return votes.count()
+        with connection.cursor() as cursor:
+            cursor.execute('EXECUTE dbo.SP_CountFinalVotesByCandidate @candidate_id = %s', [self.id])
+            if cursor.description:
+                return cursor.fetchone()[0]
+        return 0
 
     image_tag.short_description = 'Image'
 
 
 class Vote(models.Model):
-    user = models.CharField(max_length=40)
+    user = models.CharField(max_length=4000)
     candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, to_field='id')
     timestamp = models.DateTimeField(auto_now_add=True)
 
@@ -114,13 +121,11 @@ class Vote(models.Model):
     def count(self):
         return Vote.objects.filter(candidate=self.candidate).count()
 
-    def save(self, *args, **kwargs):
-        # # TODO: add encryption here
-        # # self.candidate.id = self.candidate.id + 1
-        # print("Saving Vote:", self.candidate, self.user)
-        super().save(*args, **kwargs)
+    def cast_vote(self):
+        with connection.cursor() as cursor:
+            cursor.execute('use VOTE; EXECUTE dbo.SP_InsertEncryptedVote @user = %s, @candidate_id = %s', [self.user, self.candidate.id])
 
-        # Increment the candidate's vote count
-        # candidate = Candidate.objects.get(id=self.candidate)
-        # candidate.votes += 1
-        # candidate.save()
+    def save(self, *args, **kwargs):
+        # # # TODO: add encryption here
+        # super().save(*args, **kwargs)
+        pass
