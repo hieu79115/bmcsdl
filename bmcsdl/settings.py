@@ -79,7 +79,7 @@ DATABASES = {
         'ENGINE': 'mssql',
         'NAME': 'VOTE',
         'USER': 'sa',
-        'PASSWORD': '',
+        'PASSWORD': '123123',
         'HOST': 'localhost',
         'PORT': '',
 
